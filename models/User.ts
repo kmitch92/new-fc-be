@@ -1,26 +1,30 @@
-import mongoose from 'mongoose';
+// import mongoose from 'mongoose';
 import bycrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+// import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { model, Schema, Model, Document } from 'mongoose';
+import { model, Schema, Document } from 'mongoose';
+import { CardSchema, ICard } from './Card';
 
 //declare user type
 export interface IUser extends Document {
   getResetPasswordToken(): string;
   getSignedToken(): string;
-  resetPasswordToken: string | undefined;
-  resetPasswordExpire: string | undefined;
+  resetPasswordToken?: string;
+  resetPasswordExpire?: string;
   matchPassword(password: string): boolean | PromiseLike<boolean>;
   username: string;
   password: string;
   email: string;
+  credits: number;
+  decks: Schema.Types.ObjectId[];
+  orphanCards: ICard[];
+  createdAt: Date;
+  lastLogin: Date;
   profile: {
     firstName: String;
     lastName: String;
     avatar: String;
-    bio: String;
     phone: String;
-    gender: String;
     address: {
       street1: String;
       street2: String;
@@ -29,11 +33,11 @@ export interface IUser extends Document {
       country: String;
       zip: String;
     };
-    active: true;
   };
+  active: true;
 }
 // define user schema
-const UserSchema: Schema = new Schema({
+const UserSchema: Schema = new Schema<IUser>({
   username: {
     type: String,
     lowercase: true,
@@ -55,13 +59,33 @@ const UserSchema: Schema = new Schema({
     unique: true,
     index: true,
   },
+  credits: {
+    type: Number,
+  },
+  decks: {
+    type: [Schema.Types.ObjectId],
+    ref: 'Deck',
+    required: true,
+    default: [],
+  },
+  orphanCards: {
+    type: [CardSchema],
+    required: true,
+    default: [],
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  lastLogin: {
+    type: Date,
+    default: Date.now,
+  },
   profile: {
     firstName: String,
     lastName: String,
     avatar: String,
-    bio: String,
     phone: String,
-    gender: String,
     address: {
       street1: String,
       street2: String,
@@ -91,6 +115,11 @@ UserSchema.methods.matchPassword = async function (password: string) {
   return await bycrypt.compare(password, this.password);
 };
 
+// UserSchema.methods.incrementCredits = async function (amount: number) {
+//     this.credits += amount;
+//     await this.save();
+//     }
+
 // UserSchema.methods.getSignedToken = function (password: string) {
 //   return jwt.sign({ id: this._id }, process.env.JWT_SECRET!, {
 //     expiresIn: process.env.JWT_EXPIRE,
@@ -107,4 +136,4 @@ UserSchema.methods.getResetPasswordToken = function () {
   return resetToken;
 };
 
-export const User = model('User', UserSchema);
+export const User = model<IUser>('User', UserSchema);
