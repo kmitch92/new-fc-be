@@ -10,6 +10,7 @@ import { connectDB } from './config/db';
 import { User } from './models/User';
 import { Card } from './models/Card';
 import { Deck } from './models/Deck';
+import { spacedRepetition } from './logic/spacedRepetition';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,21 +66,85 @@ app.get('/api/decks/:deckid', async (req, res) => {
     response.status(500).send({ message: error.message });
   }
 });
-// update a deck with one or many cards
-app.put('/api/decks/:deckid', async (req, res) => {
+// update a deck with one or many new cards
+app.put('/api/decks/addcards/:deckid', async (req, res) => {
   try {
     const { deckid } = req.params;
     const newCards = req.body.newCards;
-    await Deck.findByIdAndUpdate(deckid, { $addToSet: { cards: newCards } });
+    await Deck.findByIdAndUpdate(deckid, {
+      $addToSet: { cards: newCards },
+      lastUpdated: Date.now(),
+    });
     return res.status(200).json({ message: 'Deck updated successfully' });
   } catch (error) {
     console.log(error.message);
     response.status(500).send({ message: error.message });
   }
 });
-// delete a deck by id
-app.delete('/api/decks/:deckid', async (req, res) => {
+// update a card new nextReview dates
+app.put('/api/decks/updatecard/:deckid/:cardid', async (req, res) => {
   try {
+    const { deckid, cardid } = req.params;
+    const { success } = req.body;
+    const card = await Deck.findOne({ _id: deckid, 'cards._id': cardid });
+    const newNextReview = spacedRepetition(card, success);
+    return res.status(200).json({ message: 'Card updated successfully' });
+  } catch (error) {
+    console.log(error.message);
+    response.status(500).send({ message: error.message });
+  }
+});
+
+// update a single card within a deck
+app.put('/api/decks/updatecard/:deckid/:cardid', async (req, res) => {
+  try {
+    const { deckid, cardid } = req.params;
+    const { frontField, backField, extraField, imageURL, tags, answerType } =
+      req.body;
+    await Deck.findOneAndUpdate(
+      { _id: deckid, 'cards._id': cardid },
+      {
+        $set: {
+          'cards.$.frontField': frontField,
+          'cards.$.backField': backField,
+          'cards.$.extraField': extraField,
+          'cards.$.imageURL': imageURL,
+          'cards.$.tags': tags,
+          'cards.$.answerType': answerType,
+        },
+      },
+      { new: true }
+    );
+    return res.status(200).json({ message: 'Card updated successfully' });
+  } catch (error) {
+    console.log(error.message);
+    response.status(500).send({ message: error.message });
+  }
+});
+
+// update the deck details
+app.put('/api/decks/updatedeck/:deckid', async (req, res) => {
+  try {
+    const { deckid } = req.params;
+    const { name, description } = req.body;
+    await Deck.findByIdAndUpdate(deckid, {
+      name,
+      description,
+      lastUpdated: Date.now(),
+    });
+    return res.status(200).json({ message: 'Deck updated successfully' });
+  } catch (error) {
+    console.log(error.message);
+    response.status(500).send({ message: error.message });
+  }
+});
+
+// delete a deck by id
+app.delete('/api/decks/deletedeck/:deckid', async (req, res) => {
+  try {
+    const { deckid } = req.params;
+    await Deck.findByIdAndDelete(deckid);
+    return res.status(200).json({ message: 'Deck deleted successfully' });
   } catch (error) {
     console.log(error.message);
     response.status(500).send({ message: error.message });
