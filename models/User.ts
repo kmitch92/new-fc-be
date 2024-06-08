@@ -6,7 +6,7 @@ import { model, Schema, Document } from 'mongoose';
 import { CardSchema, ICard } from './Card';
 
 //declare user type
-export interface IUser extends Document {
+export interface IUserBE extends Document {
   getResetPasswordToken(): string;
   getSignedToken(): string;
   resetPasswordToken?: string;
@@ -37,7 +37,7 @@ export interface IUser extends Document {
   active: true;
 }
 // define user schema
-const UserSchema: Schema = new Schema<IUser>({
+const UserSchema: Schema = new Schema<IUserBE>({
   username: {
     type: String,
     lowercase: true,
@@ -102,7 +102,7 @@ const UserSchema: Schema = new Schema<IUser>({
   active: { type: Boolean, default: true },
 });
 
-UserSchema.pre<IUser>('save', async function (next: any) {
+UserSchema.pre<IUserBE>('save', async function (next: any) {
   if (!this.isModified('password')) {
     return next();
   }
@@ -136,4 +136,4 @@ UserSchema.methods.getResetPasswordToken = function () {
   return resetToken;
 };
 
-export const User = model<IUser>('User', UserSchema);
+export const User = model<IUserBE>('User', UserSchema);

@@ -1,4 +1,5 @@
-require('dotenv').config({ path: './config.env' });
+import * as dotenv from 'dotenv';
+dotenv.config({ path: './config.env' });
 
 import express, { response } from 'express';
 import cors from 'cors';
@@ -11,14 +12,24 @@ import { User } from './models/User';
 import { Card } from './models/Card';
 import { Deck } from './models/Deck';
 import { spacedRepetition } from './logic/spacedRepetition';
+import errorHandler from './middleware/error';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const errorHandler = require('./middleware/error');
+// const errorHandler = require('./middleware/error');
 
 connectDB();
 
 app.use(express.json());
+app.use(cookieParser());
+app.use(
+  cors({
+    origin: ['http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  })
+);
+
 // app.use('/api/auth', require('./routes/auth'));
 // app.use('/api/private', require('./routes/private'));
 
@@ -70,7 +81,22 @@ app.get('/api/decks/:deckid', async (req, res) => {
 app.put('/api/decks/addcards/:deckid', async (req, res) => {
   try {
     const { deckid } = req.params;
-    const newCards = req.body.newCards;
+    const cards = req.body.newCards;
+    const newCards = cards.map((card) => {
+      return new Card({
+        frontField: card.frontField,
+        backField: card.backField,
+        extraField: card.extraField || '',
+        imageURL: card.imageURL || '',
+        tags: card.tags || [],
+        answerType: card.answerType,
+        lastReviewed: new Date(),
+        nextReview: new Date(),
+        totalReviews: 0,
+        failedReviews: 0,
+        dateCreated: new Date(),
+      });
+    });
     await Deck.findByIdAndUpdate(deckid, {
       $addToSet: { cards: newCards },
       lastUpdated: Date.now(),
@@ -116,6 +142,20 @@ app.put('/api/decks/updatecard/:deckid/:cardid', async (req, res) => {
       { new: true }
     );
     return res.status(200).json({ message: 'Card updated successfully' });
+  } catch (error) {
+    console.log(error.message);
+    response.status(500).send({ message: error.message });
+  }
+});
+// delete a single card within a deck
+app.delete('/api/decks/deletecard/:deckid/:cardid', async (req, res) => {
+  try {
+    const { deckid, cardid } = req.params;
+    await Deck.findByIdAndUpdate(deckid, {
+      $pull: { cards: { _id: cardid } },
+      lastUpdated: Date.now(),
+    });
+    return res.status(200).json({ message: 'Card deleted successfully' });
   } catch (error) {
     console.log(error.message);
     response.status(500).send({ message: error.message });

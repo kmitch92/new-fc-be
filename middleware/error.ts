@@ -1,5 +1,5 @@
-const error = (err, req, res, next) => {
-  console.log('Middleware Error Hadnling');
+const errorHandler = (err, req, res, next) => {
+  console.log('Middleware Error Handling');
   const errStatus = err.statusCode || 500;
   const errMsg = err.message || 'Something went wrong';
   res.status(errStatus).json({
@@ -10,4 +10,4 @@ const error = (err, req, res, next) => {
   });
 };
 
-export default error;
+export default errorHandler;
